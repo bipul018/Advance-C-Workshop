@@ -2,11 +2,55 @@
 #include <stdlib.h>
 #include <string.h>
 
-//Returns the position just after the number given
-char * readNum(char *,double *);
+struct realStack
+{
+    int top;
+    int capacity;
+    double *array;
+};
 
-//Flag = 1 means skip newline characters too
-char * skipWhites(char * p,int flag );
+void initializeStack(struct realStack *s, int capacity)
+{
+    s->capacity = capacity;
+    s->top = -1;
+    s->array = (double *)malloc(s->capacity * sizeof(double));
+}
+double push(struct realStack *s, double item)
+{
+    if (s->top == s->capacity - 1)
+    {
+        s->array = (double *)realloc(s->array, (s->capacity * 2) * sizeof(double));
+        s->capacity *= 2;
+    }
+    s->array[++s->top] = item;
+    return item;
+}
+double pop(struct realStack *s)
+{
+    if (s->top == -1)
+    {
+        printf("Stack is empty\n");
+        return 0;
+    }
+    if(s->top <= s->capacity/4)
+    {
+        s->array = (double *)realloc(s->array, (s->capacity/2 + 1) * sizeof(double));
+        s->capacity /= 2;
+        s->capacity ++;
+    }
+    s->top--;
+    return s->array[s->top+1];
+}
+void releaseStack(struct realStack *s)
+{
+    free(s->array);
+}
+
+void resetStack(struct realStack *s)
+{
+    s->top = -1;
+}
+
 int main(int argc, char *argv[])
 {
 
@@ -19,7 +63,7 @@ int main(int argc, char *argv[])
         strcpy(filename,argv[1]);
     }
     FILE *fp;
-    fp=fopen(filename,"r");
+    fp=fopen(filename,"rb");
     if(fp==NULL)
     {
         printf("File not found\n");
@@ -33,15 +77,10 @@ int main(int argc, char *argv[])
     fseek(fp, 0L, SEEK_SET);
 
     //Allocating memory to store the file
-    char* fileBuffer = (char*)malloc(fileSize);
-    memset(fileBuffer, 0, fileSize);
+    char* fileBuffer = (char*)malloc(fileSize + 2);
+    memset(fileBuffer, 0, fileSize + 2);
     int size=0;
-    
-    while((fileBuffer[size]=fgetc(fp))!=EOF)
-    {
-        size++;
-    }
-    fileBuffer[size]='\0';
+    fread(fileBuffer, fileSize, 1, fp);
     fclose(fp);
 
     //Creating result file
@@ -60,80 +99,87 @@ int main(int argc, char *argv[])
         return 0;
     }
 
-
     char *p = fileBuffer;
-    double result = 0.0;
+
+    struct realStack s;
+    initializeStack(&s, 10);
     while(*p != '\0')
     {
-        //Skip all whitespace including newline
-        p = skipWhites(p,1);
-
-        //Skip if ended
-        if(*p == '\0')
-            break;
-
-        //Read the first number
-        p = readNum(p,&result);
-
-        while(*p != '\0' && *p != '\n')
+        int calcLineFound = 0;
+        while(*p != '\n' && *p != '\0')
         {
-            double nextNum=0;
-            p = readNum(p,&nextNum);
-            //Skipping whitespaces
-            p = skipWhites(p,0);
 
-            switch(*p)
+            if(*p >= '0' && *p <='9')
             {
-                case '+':
-                    result += nextNum;
-                    break;
-                case '-':
-                    result -= nextNum;
-                    break;
-                case '*':
-                    result *= nextNum;
-                    break;
-                case '/':
-                    result /= nextNum;
-                    break;
-                default:
-                    break;
-            }            
+                calcLineFound = 1;
+                double num = 0.0;
+                double factor = 1.0;
+                while((*p >= '0' && *p <='9') || (*p == '.' && factor == 1.0))
+                {
+                    if(*p == '.' && factor == 1.0)
+                    {
+                        factor = 0.1;
+                    }
+                    else
+                    {
+                        if(factor < 1.0)
+                        {
+                            num += (*p - '0') * factor;
+                            factor /= 10.0;
+                        }
+                        else
+                        {
+                            num = num * 10 + (*p - '0');
+                        }
+                    }
+                    p++;
+                }
+                push(&s,num);
+
+            }
+
+            if(*p=='+' || *p=='-' || *p=='*' || *p=='/')
+            {
+                if(s.top<1)
+                {
+                    printf("Invalid Expression\n");
+                    return 0;
+                }
+                double num1 = pop(&s);
+                double num2 = pop(&s);
+                double result = 0.0;
+                if(*p=='+')
+                {
+                    result = num2 + num1;
+                }
+                else if(*p=='-')
+                {
+                    result = num2 - num1;
+                }
+                else if(*p=='*')
+                {
+                    result = num2 * num1;
+                }
+                else if(*p=='/')
+                {
+                    result = num2 / num1;
+                }
+                push(&s,result);
+            }
+
             p++;
         }
-        fprintf(fp1,"%lf\n",result);
+        //Skipping all the newlines
+        while(*p == '\n' )
+        {
+            p++;
+        }
+        if(calcLineFound == 1)
+            fprintf(fp1,"%lf\n",pop(&s));
+        resetStack(&s);
     }
+    releaseStack(&s);
     free(fileBuffer);
     fclose(fp1);
     return 0;
-}
-
-char * skipWhites(char *p,int flag)
-{
-    while(*p == ' ' || *p == '\t' || *p == '\r' || *p == '\f' || *p == '\v'|| ((*p == '\n' ) && flag == 1))
-    {
-        p++;
-    }
-
-    return p;
-}
-
-char * readNum(char *p,double *result)
-{
-    //Skipping the spaces
-    p = skipWhites(p,0);
-
-    *result = 0.0;
-    //Checking if the string is a number
-    if(*p >= '0' && *p <= '9')
-    {
-        *result = *result * 10 + (*p - '0');
-        p++;
-        while(*p >= '0' && *p <= '9')
-        {
-            *result = *result * 10 + (*p - '0');
-            p++;
-        }
-    }
-    return p;
 }
