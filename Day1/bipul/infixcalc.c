@@ -27,36 +27,6 @@ typedef struct Node
     double num;
 } Node;
 
-void printOp(enum Operator op)
-{
-    switch (op)
-    {
-        case ADD:
-            printf("+");
-            break;
-        case SUB:
-            printf("-");
-            break;
-        case MULT:
-            printf("*");
-            break;
-        case DIVI:
-            printf("/");
-            break;
-        case EXP:
-            printf("^");
-            break;
-        case BRAKO:
-            printf("(");
-            break;
-        case BRAKC:
-            printf(")");
-            break;
-        default:
-            break;
-    }
-}
-
 double solveTree(struct Node * node)
 {
     double left=0.0,right=0.0;
@@ -95,18 +65,43 @@ double solveTree(struct Node * node)
 //Takes an array of unarranged nodes and arranges them in a binary tree and returns the parent node
 struct Node * makeTree(struct Node * nodeStart, unsigned int size);
 
-
-int main()
+int main(int argc , char * argv[])
 {
-    char * expr = "1+ (2 *4-5)/8^2";
+    //Taking input from file
+    FILE * fin, * fout;
+    if(argc > 1)
+        fin = fopen(argv[1],"rb");
+    else
+        fin = fopen("infix_input.txt","rb");
+
+    if(fin == NULL)
+    {
+        printf("Error opening file\n");
+        return 0;
+    }
+
+    //Reading into buffer
+    char * buffer;
+    fseek(fin,SEEK_SET,SEEK_END);
+    long fSize = ftell(fin);
+    fseek(fin,SEEK_SET,SEEK_SET);
+    buffer = (char *)malloc(sizeof(char)*fSize);
+    fread(buffer,sizeof(char),fSize,fin);
+    fclose(fin);
+
 
     //stack to store the nodes
     struct Stack nodes;
-    createStk(&nodes,3,Node);
+    createStk(&nodes,10,Node);
 
-    char * token = expr;
+    //Stack to store the size of the nodes in each line
+    struct Stack nodeSizes;
+    createStk(&nodeSizes,3,int);
+
+
+    char * token = buffer;
     struct Node tmpNode;
-    struct Node * debugNode = nodes.data;
+    int lineNodeCount = 0;
     //Fills the stack with the nodes reading from the expression
     while(*token != '\0')
     {
@@ -120,6 +115,7 @@ int main()
             tmpNode.parentFlag = 0;
             tmpNode.type = NUM;
             pushStk(&nodes,&tmpNode,Node);
+            lineNodeCount++;
         }
 
         if( *token == '+' || *token == '-' || *token == '*' || *token == '/' || *token == '(' || *token == '^' || *token == ')')
@@ -153,15 +149,46 @@ int main()
             tmpNode.right=NULL;
             tmpNode.num = 0.0;
             pushStk(&nodes,&tmpNode,Node);
+            lineNodeCount++;
         }
-        
+        else if (*token == '\n' || *token == '\r')
+        {
+            pushStk(&nodeSizes,&lineNodeCount,int);
+            lineNodeCount = 0;
+        }
         token++;
     }
+    //For last line
+    {
+        pushStk(&nodeSizes,&lineNodeCount,int);
+        lineNodeCount = 0;
+    }
+    free(buffer);
 
-    printf("result = %f ",solveTree(makeTree(nodes.data,nodes.last+1)));
+    //Opening file for output
+    if(argc > 2)
+        fout = fopen(argv[2],"wb");
+    else
+        fout = fopen("infix_output.txt","wb");
 
+    for(int i = 0; i < nodeSizes.last + 1; i++)
+    {
+        int stackPos = (i == 0)?0: getStk(&nodeSizes,i-1,int);
+        int stackSize = getStk(&nodeSizes,i,int);
+        Node * startNode = makeTree(&getStk(&nodes,stackPos,Node),stackSize);
+        if(startNode != NULL)
+        {
+            fprintf(fout,"%lf\n",solveTree(startNode));
+        }
+        else
+        {
+            fprintf(fout,"Error\n");
+        }
+    }
 
+    fclose(fout);
     delStk(&nodes);
+    delStk(&nodeSizes);
 
     return 0;
 }
@@ -201,7 +228,7 @@ struct Node * makeTree(struct Node * nodeStart, unsigned int size)
         }
     }
 
-    //Start from the highest operator type
+    //Start from the highest operator type and work down to the lowest
     enum Operator currType = EXP;
     struct Node * tmp ;
     while(currType > ZERO_POINT)

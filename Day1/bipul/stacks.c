@@ -46,3 +46,8 @@ void delStack(struct Stack * s)
     s->capacity = 0;
     free(s->data);
 }
+
+void * getStack(struct Stack * s, int index, unsigned int unitSize)
+{
+    return s->data + index * unitSize;
+}

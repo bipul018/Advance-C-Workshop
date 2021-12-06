@@ -7,7 +7,7 @@
 #define peekStk(stackP,type) *(type*)peekStack(stackP,sizeof(type))
 #define delStk(stackP) delStack(stackP)
 #define clearStk(stackP) clearStack(stackP)
-
+#define getStk(stackP,index,type) *(type*)getStack(stackP,index,sizeof(type))
 
 struct Stack {
     void *data;
@@ -20,6 +20,7 @@ void * popStack(struct Stack * s, unsigned int unitSize);
 void * peekStack(struct Stack * s, unsigned int unitSize);
 void * clearStack(struct Stack * s);
 void delStack(struct Stack * s);
+void * getStack(struct Stack * s, int index, unsigned int unitSize);
 
 
 #endif //ADVANCE_C_WORKSHOP_STACKS_H
