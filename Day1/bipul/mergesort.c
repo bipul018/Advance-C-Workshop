@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+//Merge sort function
 void mergeSort(int arr[],int size)
 {
     if(size<2)
@@ -48,6 +49,7 @@ void mergeSort(int arr[],int size)
 
 }
 
+//Reads the numbers from csv file and stores in an array line by line
 int readNumFile(char* filename, int * nLines, int ** sizes, int ** numbers) {
     FILE *fp = fopen(filename, "rb");
     if (fp == NULL) {
@@ -55,6 +57,7 @@ int readNumFile(char* filename, int * nLines, int ** sizes, int ** numbers) {
         return 0;
     }
 
+    //Load file into string buffer
     fseek(fp, 0, SEEK_END);
     int size = ftell(fp);
     fseek(fp, 0, SEEK_SET);
@@ -68,6 +71,7 @@ int readNumFile(char* filename, int * nLines, int ** sizes, int ** numbers) {
 
     buffer[size] = '\0';
 
+    //Count no of lines and allocate memory for numbers in each line
     *nLines = 0;
     for(unsigned int i = 0; i < size; i++) {
         if (buffer[i] == '\n') {
@@ -115,13 +119,8 @@ int readNumFile(char* filename, int * nLines, int ** sizes, int ** numbers) {
                 pCh++;
             }
             (*numbers)[i] = num;
-            if(num == 4384){
-                printf("%d\t",num);
-            }
             num = 0;
             i++;
-            //printf("%d ",(*numbers)[i-1]);
-
         }
 
     }
@@ -131,33 +130,26 @@ int readNumFile(char* filename, int * nLines, int ** sizes, int ** numbers) {
 }
 int main(int argc, char * argv[])
 {
-/*
-    int nArr[10]={4,2,4,5,1,3,2,4,5,6};
-    mergeSort(nArr,10);
-    for(int i=0;i<10;i++)
-        printf("%d ",nArr[i]);
-    printf("\n");
-    return 0;
-*/
-
     int * sizes;
     int * numbers;
     int nLines;
     int totalNum = 0;
 
+    //use default input file if no argument is provided
     if(argc > 1) {
         totalNum = readNumFile(argv[1], &nLines, &sizes, &numbers);
     } else {
         totalNum = readNumFile("mergesort_input.csv", &nLines, &sizes, &numbers);
     }
 
+    //Sort the numbers line by line
     unsigned int prev = 0;
     for(unsigned int i = 0; i<nLines; i++){
         mergeSort(numbers+prev,sizes[i]);
         prev += sizes[i];
     }
 
-    //Output file
+    //Output to file
     FILE *fp ;
     if(argc > 2) {
         fp = fopen(argv[2], "wb");
